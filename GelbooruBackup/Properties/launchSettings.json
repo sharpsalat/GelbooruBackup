@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "GelbooruBackup": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

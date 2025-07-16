@@ -1,0 +1,50 @@
+services:
+  server:
+    image: szurubooru/server:latest
+    restart: unless-stopped
+    depends_on:
+      - sql
+    environment:
+      POSTGRES_HOST: sql
+      THREADS: 6
+    env_file:
+      - szuruboorusync.env
+    volumes:
+      - ${DATA_PATH}/szurubooru/data:/data
+
+  client:
+    image: szurubooru/client:latest
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      BACKEND_HOST: server
+      BASE_URL:
+    env_file:
+      - szuruboorusync.env
+    volumes:
+      - ${DATA_PATH}/szurubooru/data:/data:ro
+    ports:
+      - "4480:80"
+
+  sql:
+    image: postgres:11-alpine
+    restart: unless-stopped
+    env_file:
+      - szuruboorusync.env
+    volumes:
+      - ${DATA_PATH}/szurubooru/pgdata:/var/lib/postgresql/data
+    ports:
+      - "45432:5432"
+      
+  gelbooru-sync:
+    image: sharpsalat/gelboorusync:latest
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      BACKEND_HOST: server
+    env_file:
+      - szuruboorusync.env
+    volumes:
+      - ${DATA_PATH}/szurubooru/gelboorudata:/app/data

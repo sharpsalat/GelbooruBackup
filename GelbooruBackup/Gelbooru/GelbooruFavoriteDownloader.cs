@@ -56,7 +56,7 @@ public class GelbooruFavoriteDownloader
     {
         string tags = $"fav:{_userId} id:>={minId} id:<={maxId}";
         int count = await CountPostsAsync(tags);
-
+        await Task.Delay(100);
         if (count == 0)
         {
             Console.WriteLine($"⛔ Нет постов в диапазоне {minId}-{maxId}");
@@ -99,7 +99,7 @@ public class GelbooruFavoriteDownloader
         for (int pid = 0; pid < _maxSafePages; pid++)
         {
             int page = pid;
-            await Task.Delay(100); // задержка между задачами (уменьшает шанс 429)
+            await Task.Delay(20*pid); // задержка между задачами (уменьшает шанс 429)
             tasks.Add(Task.Run(async () =>
             {
                 string url = $"https://gelbooru.com/index.php?page=dapi&s=post&q=index&limit=100&pid={page}&json=1&tags={Uri.EscapeDataString(tags)}&api_key={_apiKey}&user_id={_userId}";

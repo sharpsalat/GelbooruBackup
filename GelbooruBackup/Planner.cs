@@ -97,7 +97,9 @@ public class Planner : IDisposable
                 if (delaySeconds < 0)
                     delaySeconds = 0;
             }
-
+            GC.Collect();            // Запускает сборку мусора всех поколений
+            GC.WaitForPendingFinalizers(); // Ждёт завершения финализаторов
+            GC.Collect();
             await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
         }
     }

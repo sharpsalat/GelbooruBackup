@@ -128,20 +128,39 @@ public class GelbooruClient
     public async Task<int> GetFavoritePostCountAsync(string apikey, string userName)
     {
         var url = GetPostsApiUrl(apikey, userName, page: 0); // любая страница, count всегда один
+        Console.WriteLine($"Запрос количества избранного -> URL: {url}");
 
         try
         {
-            var response = await _httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
+            using var response = await _httpClient.GetAsync(url);
+            Console.WriteLine($"Ответ от сервера: {(int)response.StatusCode} {response.ReasonPhrase}");
+            Console.WriteLine($"  Content-Type: {response.Content.Headers.ContentType?.MediaType ?? "<unknown>"}");
+
+            if (response.Headers.TryGetValues("Retry-After", out var retryValues))
+            {
+                Console.WriteLine($"  Retry-After: {string.Join(", ", retryValues)}");
+            }
 
             var content = await response.Content.ReadAsStringAsync();
+            var snippet = string.IsNullOrEmpty(content) ? "<empty>" : (content.Length > 1000 ? content.Substring(0, 1000) + "..." : content);
+            Console.WriteLine($"  Response length: {content?.Length ?? 0}, starts with: '{(string.IsNullOrEmpty(content) ? "none" : content[0].ToString())}'");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"Ошибка при получении количества — HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
+                Console.WriteLine($"  Snippet: {snippet}");
+                await Task.Delay(RequestIntervalTimeOut);
+                return 0;
+            }
 
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             };
 
-            var result = JsonSerializer.Deserialize<GelbooruResponse>(content, options);
+            try
+            {
+                var result = JsonSerializer.Deserialize<GelbooruResponse>(content, options);
                 var count = result?.Attributes?.Count ?? 0;
                 Console.WriteLine($"Успешно распарсено JSON — найдено: {count}");
                 await Task.Delay(RequestIntervalTimeOut);
@@ -152,8 +171,9 @@ public class GelbooruClient
                 Console.WriteLine($"⚠ JSON parse error: {jex.Message}");
                 Console.WriteLine($"  Content-Type: {response.Content.Headers.ContentType?.MediaType ?? "<unknown>"}");
                 Console.WriteLine($"  Snippet: {snippet}");
-            await Task.Delay(RequestIntervalTimeOut);
-            return result?.Attributes?.Count ?? 0;
+                await Task.Delay(RequestIntervalTimeOut);
+                return 0;
+            }
         }
         catch (Exception ex)
         {

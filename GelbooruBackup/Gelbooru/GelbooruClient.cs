@@ -142,6 +142,16 @@ public class GelbooruClient
             };
 
             var result = JsonSerializer.Deserialize<GelbooruResponse>(content, options);
+                var count = result?.Attributes?.Count ?? 0;
+                Console.WriteLine($"Успешно распарсено JSON — найдено: {count}");
+                await Task.Delay(RequestIntervalTimeOut);
+                return count;
+            }
+            catch (JsonException jex)
+            {
+                Console.WriteLine($"⚠ JSON parse error: {jex.Message}");
+                Console.WriteLine($"  Content-Type: {response.Content.Headers.ContentType?.MediaType ?? "<unknown>"}");
+                Console.WriteLine($"  Snippet: {snippet}");
             await Task.Delay(RequestIntervalTimeOut);
             return result?.Attributes?.Count ?? 0;
         }

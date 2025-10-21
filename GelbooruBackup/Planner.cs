@@ -85,7 +85,6 @@ public class Planner : IDisposable
 
             if (needForce)
             {
-                
                 delaySeconds = _config.ShortSyncTimeout;
             }
             else
@@ -111,17 +110,18 @@ public class Planner : IDisposable
             return;
         if (isUpdated || forceSync)
         {
-            await SyncToSzurubooru(config);
+            //await SyncToSzurubooru(config);
         }
     }
 
     public async Task<bool> SyncFromGelbooru(Config config, bool forceSync = false)
     {
-        var gelbooruClient = new GelbooruClient(_cts);
-        var isFavoritesCountChanged = await gelbooruClient.SyncFavoritesToLiteDbAsync(config.GelbooruApiKey, config.GelbooruUserId, config.FilesFolderPath, forceSync);
+        var favouritesOwnerId = string.IsNullOrEmpty(config.FavouritesOwnerId) ? config.GelbooruUserId : config.FavouritesOwnerId;
+        var gelbooruClient = new GelbooruClient(_cts, config.GelbooruUsername, config.GelbooruPassword);
+        var hasNewPosts = await gelbooruClient.SyncFavoritesToLiteDbAsync(config.GelbooruApiKey, config.GelbooruUserId, favouritesOwnerId, config.FilesFolderPath, forceSync);
         if (_cts.IsCancellationRequested)
             return false;
-        if (forceSync || isFavoritesCountChanged)
+        if (forceSync || hasNewPosts)
         {
             if (forceSync) Console.WriteLine("Принудительная синхронизация, начинаю синхронизацию тэгов в БД");
             else Console.WriteLine("Избранное изменилось, начинаю синхронизацию тэгов в БД");

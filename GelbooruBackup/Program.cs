@@ -43,10 +43,15 @@ namespace GelbooruBackup
             var shortSyncTimeoutString = Environment.GetEnvironmentVariable("SHORT_SYNC_TIMEOUT");
             var fullSyncTimeoutString = Environment.GetEnvironmentVariable("FULL_SYNC_TIMEOUT");
             var backendHost = Environment.GetEnvironmentVariable("BACKEND_HOST");
+            var gelbooruUserId = GetRequiredEnv("GELBOORU_USER_ID");
+            var favouritesOwnerId = Environment.GetEnvironmentVariable("FAVOURITES_OWNER_ID");
             return new Config
             {
                 GelbooruApiKey = GetRequiredEnv("GELBOORU_API_KEY"),
-                GelbooruUserId = GetRequiredEnv("GELBOORU_USER_ID"),
+                GelbooruUserId = gelbooruUserId,
+                FavouritesOwnerId = string.IsNullOrEmpty(favouritesOwnerId) ? gelbooruUserId : favouritesOwnerId,
+                GelbooruUsername = GetRequiredEnv("GELBOORU_USERNAME"),
+                GelbooruPassword = GetRequiredEnv("GELBOORU_PASSWORD"),
                 SzurubooruURL = backendHost != null ? $"http://{backendHost}:6666" : GetRequiredEnv("SZURUBOORU_URL"),
                 SzurubooruUserName = GetRequiredEnv("SZURUBOORU_USER_NAME"),
                 SzurubooruUserPassword = GetRequiredEnv("SZURUBOORU_USER_PASSWORD"),

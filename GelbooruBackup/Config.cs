@@ -6,6 +6,9 @@ namespace GelbooruBackup
     {
         public string GelbooruApiKey { get; set; }
         public string GelbooruUserId { get; set; }
+        public string FavouritesOwnerId { get; set; }
+        public string GelbooruUsername { get; set; }
+        public string GelbooruPassword { get; set; }
         public string SzurubooruURL { get; set; }
         public string SzurubooruUserName { get; set; }
         public string SzurubooruUserPassword { get; set; }

@@ -168,8 +168,8 @@ public class GelbooruFavoriteDownloader
                     var content = await response.Content.ReadAsStringAsync();
                     if (content.Contains("<!DOCTYPE html"))
                     {
-                        //return await GetPostsByHtmlAsync(json);
-                        return await GetPostsByHtmlWithSemaphoreAsync(content);
+                        return await GetPostsByHtmlAsync(content);
+                        //return await GetPostsByHtmlWithSemaphoreAsync(content);
                     }
                     else
                     {

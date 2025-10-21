@@ -45,13 +45,17 @@ public class GelbooruFavoriteDownloader
         int pid = 0;
         int previousPid = 0;
         bool lastPageHasNewPosts = true;
+        Console.WriteLine("Начало скачивания избранного...");
         do
         {
+            Console.WriteLine("--------------------------------------------------");
             Console.WriteLine($"pid: {pid}");
+            Console.WriteLine("--------------------------------------------------");
             int page = pid;
             await Task.Delay(1000);
             await Task.Run(async () =>
             {
+                Console.WriteLine($"Загрузка страницы избранного с pid={page}...");
                 string url = $"https://gelbooru.com/index.php?page=favorites&s=view&id={_favouritesOwnerId}&pid={page}";
 
                 var posts = await DownloadPageWithRetryAsync(url);
@@ -73,7 +77,9 @@ public class GelbooruFavoriteDownloader
                         _collectedPosts.Add(post);
                     }
                 }
+                Console.WriteLine($"Всего собранных постов: {_collectedPosts.Count}");
             });
+            Console.WriteLine("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
         }
         while (pid != previousPid && lastPageHasNewPosts);
     }

@@ -9,21 +9,44 @@ public class GelbooruClient
     private CancellationTokenSource _cts;
     private const int RequestIntervalTimeOut = 1500;
     private const int MaxRequestsPerBatch = 6;
-    private static readonly HttpClient _httpClient = new HttpClient();
+    public static HttpClient HttpClient { get; private set; }
 
-    public GelbooruClient(CancellationTokenSource cts)
+    public GelbooruClient(CancellationTokenSource cts, string gelbooruUsername, string gelbooruPassword)
     {
         _cts = cts;
+        HttpClient = GetLoggedInClient(gelbooruUsername, gelbooruPassword);
     }
 
     private string GetPostsApiUrl(string apikey, string user_id, int page) => $@"https://gelbooru.com/index.php?page=dapi&s=post&q=index&pid={page}&json=1&tags=fav:{user_id}&api_key={apikey}&user_id={user_id}";
     private string GetTagsApiUrl(string apikey, string user_id, string namesParam) => $@"https://gelbooru.com/index.php?page=dapi&s=tag&q=index&json=1&names={namesParam}&json=1&api_key={apikey}&user_id={user_id}";
+
+    private HttpClient GetLoggedInClient(string username, string password)
+    {
+        var handler = new HttpClientHandler
+        {
+            UseCookies = true,
+            CookieContainer = new System.Net.CookieContainer()
+        };
+
+        var client = new HttpClient(handler);
+
+        var formData = new List<KeyValuePair<string, string>>
+        {
+            new("user", username),
+            new("pass", password)
+        };
+
+        client.PostAsync("https://gelbooru.com/index.php?page=account&s=login&code=00", new FormUrlEncodedContent(formData)).Wait();
+
+        return client;
+    }
+
     public async Task<List<GelbooruPost>> GetFavoritePostsAsync(string apikey, string userName, int page)
     {
         var url = GetPostsApiUrl(apikey, userName, page);
         try
         {
-            var response = await _httpClient.GetAsync(url);
+            var response = await HttpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync();
@@ -43,149 +66,12 @@ public class GelbooruClient
             return new List<GelbooruPost>();
         }
     }
-    public async Task<List<GelbooruPost>> GetAllFavoritePostsAsync(string apiKey, string userId, int expectedTotal)
-    {
-        const int pageSize = 100;
-        const int maxParallel = 5;
-        const int maxPerSecond = 10;
-        const int retryDelay = 3000;
-        const int delayBetweenStartMs = 100;
-
-        int pageCount = (expectedTotal / pageSize) + 2; // +1 запас, +1 на всякий случай
-
-        var allPosts = new ConcurrentBag<GelbooruPost>();
-        var semaphore = new SemaphoreSlim(maxParallel);
-
-        var tasks = new List<Task>();
-
-        for (int page = 0; page < pageCount; page++)
-        {
-            await Task.Delay(delayBetweenStartMs);
-
-            await semaphore.WaitAsync();
-            var currentPage = page;
-
-            var task = Task.Run(async () =>
-            {
-                try
-                {
-                    List<GelbooruPost>? posts = null;
-                    int retryCount = 0;
-
-                    do
-                    {
-                        try
-                        {
-                            posts = await GetFavoritePostsAsync(apiKey, userId, currentPage);
-                        }
-                        catch (HttpRequestException ex) when (ex.Message.Contains("429"))
-                        {
-                            Console.WriteLine($"⚠ 429 Too Many Requests — страница {currentPage}, повтор через {retryDelay} мс...");
-                            await Task.Delay(retryDelay);
-                            retryCount++;
-                        }
-                    } while (posts == null && retryCount < 3);
-
-                    if (posts == null)
-                    {
-                        Console.WriteLine($"❌ Страница {currentPage} не загружена.");
-                        return;
-                    }
-
-                    foreach (var post in posts)
-                        allPosts.Add(post);
-
-                    Console.WriteLine($"📥 Страница {currentPage} — {posts.Count} постов");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"⚠ Ошибка при загрузке стр. {currentPage}: {ex.Message}");
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
-
-            tasks.Add(task);
-
-            // Ограничение в 10 запросов/сек
-            if ((page + 1) % maxPerSecond == 0)
-            {
-                await Task.WhenAll(tasks);
-                tasks.Clear();
-                await Task.Delay(1000); // Пауза между "пакетами"
-            }
-        }
-
-        await Task.WhenAll(tasks);
-        Console.WriteLine($"✅ Всего загружено: {allPosts.Count} постов (ожидалось: ~{expectedTotal})");
-        return allPosts
-            .GroupBy(p => p.Id) // удалим дубликаты по ID
-            .Select(g => g.First())
-            .ToList();
-    }
-    public async Task<int> GetFavoritePostCountAsync(string apikey, string userName)
-    {
-        var url = GetPostsApiUrl(apikey, userName, page: 0); // любая страница, count всегда один
-        Console.WriteLine($"Запрос количества избранного -> URL: {url}");
-
-        try
-        {
-            using var response = await _httpClient.GetAsync(url);
-            Console.WriteLine($"Ответ от сервера: {(int)response.StatusCode} {response.ReasonPhrase}");
-            Console.WriteLine($"  Content-Type: {response.Content.Headers.ContentType?.MediaType ?? "<unknown>"}");
-
-            if (response.Headers.TryGetValues("Retry-After", out var retryValues))
-            {
-                Console.WriteLine($"  Retry-After: {string.Join(", ", retryValues)}");
-            }
-
-            var content = await response.Content.ReadAsStringAsync();
-            var snippet = string.IsNullOrEmpty(content) ? "<empty>" : (content.Length > 1000 ? content.Substring(0, 1000) + "..." : content);
-            Console.WriteLine($"  Response length: {content?.Length ?? 0}, starts with: '{(string.IsNullOrEmpty(content) ? "none" : content[0].ToString())}'");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                Console.WriteLine($"Ошибка при получении количества — HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
-                Console.WriteLine($"  Snippet: {snippet}");
-                await Task.Delay(RequestIntervalTimeOut);
-                return 0;
-            }
-
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            try
-            {
-                var result = JsonSerializer.Deserialize<GelbooruResponse>(content, options);
-                var count = result?.Attributes?.Count ?? 0;
-                Console.WriteLine($"Успешно распарсено JSON — найдено: {count}");
-                await Task.Delay(RequestIntervalTimeOut);
-                return count;
-            }
-            catch (JsonException jex)
-            {
-                Console.WriteLine($"⚠ JSON parse error: {jex.Message}");
-                Console.WriteLine($"  Content-Type: {response.Content.Headers.ContentType?.MediaType ?? "<unknown>"}");
-                Console.WriteLine($"  Snippet: {snippet}");
-                await Task.Delay(RequestIntervalTimeOut);
-                return 0;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка при получении количества: {ex.Message}");
-            return 0;
-        }
-    }
+    
     private async Task DownloadFileAsync(string url, string outputPath)
     {
         try
         {
-            using var response = await _httpClient.GetAsync(url);
+            using var response = await HttpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             await using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
@@ -196,7 +82,8 @@ public class GelbooruClient
             Console.WriteLine($"⚠ Ошибка при скачивании файла {url}: {ex.Message}");
         }
     }
-    public async Task<bool> SyncFavoritesToLiteDbAsync(string apiKey, string userId, string outputFolder, bool forceSync = false)
+
+    public async Task<bool> SyncFavoritesToLiteDbAsync(string apiKey, string userId, string favouritesOwnerId, string outputFolder, bool forceSync = false)
     {
         if (_cts.IsCancellationRequested)
             return false;
@@ -208,24 +95,22 @@ public class GelbooruClient
 
         var meta = metaCol.FindById("sync_metadata");
         int? localFavoritesCount = meta?.FavoritesCount;
-
-        int currentCount = await GetFavoritePostCountAsync(apiKey, userId);
         
-        var isFavoritesPostsCountChanged = localFavoritesCount.HasValue && currentCount != localFavoritesCount.Value;
+        var hasNewPosts = await HasNewPosts(postsCol, favouritesOwnerId);
 
         if(localFavoritesCount.HasValue)
         {
             Console.WriteLine($"Количество постов в БД: {localFavoritesCount}");
-            Console.WriteLine($"Количество постов на Gelbooru: {currentCount}");
+            Console.WriteLine($"Есть новые посты на Gelbooru: {hasNewPosts}");
         }
         if (_cts.IsCancellationRequested)
             return false;
         if (!forceSync)
         {
-            if (!isFavoritesPostsCountChanged)
+            if (!hasNewPosts)
             {
                 Console.WriteLine("Избранное не изменилось, синхронизация новых постов не требуется.");
-                return isFavoritesPostsCountChanged;
+                return hasNewPosts;
             }
             else
             {
@@ -238,10 +123,17 @@ public class GelbooruClient
         }
 
         await Task.Delay(3000);
-        var down = new GelbooruFavoriteDownloader(apiKey, userId);
-        var currentPosts = await down.DownloadAllFavoritesAsync();
-
-        //var currentPosts = await GetAllFavoritePostsAsync(apiKey, userId, currentCount);
+        var down = new GelbooruFavoriteDownloader(apiKey, userId, favouritesOwnerId);
+        var currentPosts = new List<GelbooruPost>();
+        if (forceSync)
+        {
+            currentPosts = await down.DownloadAllFavoritesAsync();
+        }
+        else
+        {
+            var postIds = postsCol.Query().Select(o => o.Id).ToList();
+            currentPosts = await down.DownloadNewFavoritesAsync(postIds);
+        }
 
         Console.WriteLine($"Начинаю синхронизацию {currentPosts.Count} постов...");
 
@@ -285,12 +177,11 @@ public class GelbooruClient
 
                 bool isNew = oldMeta == null;
 
-                if (isNew)
+                if (!File.Exists(filePath))
                 {
-                    if (!File.Exists(filePath))
-                    {
-                        await DownloadFileAsync(post.FileUrl, filePath);
-                    }
+                    await DownloadFileAsync(post.FileUrl, filePath);
+                    if (!isNew)
+                        Console.WriteLine($"♻️ Восстановлен файл поста {post.Id}");
                 }
 
                 bool needUpsert = false;
@@ -333,11 +224,16 @@ public class GelbooruClient
         });
 
         await Task.WhenAll(tasks);
-        
+
+        lock (dbLock)
+        {
+            db.Checkpoint();
+        }
+
         var newMetaRecord = new SyncMetadata
         {
             Id = "sync_metadata",
-            FavoritesCount = currentPosts.Count(),
+            FavoritesCount = postsCol.Count(),
             LastSyncedAt = DateTime.UtcNow
         };
 
@@ -348,8 +244,24 @@ public class GelbooruClient
         }
 
         Console.WriteLine("✅ Синхронизация избранных в базу данных завершена.");
-        return isFavoritesPostsCountChanged;
+        return hasNewPosts;
     }
+
+    private async Task<bool> HasNewPosts(ILiteCollection<PostDocument> postsCol, string favouritesOwnerId)
+    {
+        var url = $"https://gelbooru.com/index.php?page=favorites&s=view&id={favouritesOwnerId}";
+        var response = await HttpClient.GetAsync(url);
+        var content = await response.Content.ReadAsStringAsync();
+        var ids = GelbooruFavoriteDownloader.ExtractPostIdsFromHtml(content);
+        foreach (var id in ids)
+        {
+            if (postsCol.FindById(id) == null)
+                return true;
+        }
+
+        return false;
+    }
+
     private bool PostDocumentEquals(PostDocument a, PostDocument b)
     {
         // Сравниваем важные поля для обновления
@@ -372,6 +284,7 @@ public class GelbooruClient
                a.HasComments == b.HasComments &&
                a.HasNotes == b.HasNotes;
     }
+
     public async Task<List<GelbooruTag>> DownloadTagTypesAsync(string apikey, string user_id, IEnumerable<string> allTags)
     {
         var result = new List<GelbooruTag>();
@@ -391,7 +304,7 @@ public class GelbooruClient
 
             try
             {
-                var response = await _httpClient.GetAsync(url);
+                var response = await HttpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
                 var content = await response.Content.ReadAsStringAsync();
@@ -413,6 +326,7 @@ public class GelbooruClient
 
         return result;
     }
+
     public async Task DownloadTagsInfoToLiteDbAsync(string apikey, string user_id, string outputFolder)
     {
         if (_cts.IsCancellationRequested)

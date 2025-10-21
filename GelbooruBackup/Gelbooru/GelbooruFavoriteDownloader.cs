@@ -148,6 +148,7 @@ public class GelbooruFavoriteDownloader
         var posts = new List<GelbooruPost>();
         foreach (var id in ids)
         {
+            await Task.Delay(50); // небольшая задержка между запросами
             var postUrl = $"https://gelbooru.com/index.php?page=dapi&s=post&q=index&id={id}&json=1&api_key={_apiKey}&user_id={_userId}";
             var postsById = await DownloadPageWithRetryAsync(postUrl);
             posts.AddRange(postsById);

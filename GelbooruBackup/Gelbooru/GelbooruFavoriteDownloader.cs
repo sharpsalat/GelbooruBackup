@@ -55,6 +55,7 @@ public class GelbooruFavoriteDownloader
                 string url = $"https://gelbooru.com/index.php?page=favorites&s=view&id={_favouritesOwnerId}&pid={page}";
 
                 var posts = await DownloadPageWithRetryAsync(url);
+                Console.WriteLine($"Загружено постов: {posts?.Count ?? 0}");
                 if (posts == null) return;
 
                 if (existingPostIds != null)
@@ -79,6 +80,7 @@ public class GelbooruFavoriteDownloader
 
     public static List<long> ExtractPostIdsFromHtml(string htmlContent)
     {
+        Console.WriteLine("Извлечение постов из HTML...");
         var postIds = new List<long>();
 
         // Ищем все вхождения posts[ЧИСЛО]
@@ -95,7 +97,7 @@ public class GelbooruFavoriteDownloader
                 }
             }
         }
-
+        Console.WriteLine($"Извлечено постов из HTML: {postIds.Count}");
         return postIds;
     }
 
@@ -174,6 +176,7 @@ public class GelbooruFavoriteDownloader
                     var content = await response.Content.ReadAsStringAsync();
                     if (content.Contains("<!DOCTYPE html"))
                     {
+                        Console.WriteLine($"✅ Успешно загружена HTML страница");
                         return await GetPostsByHtmlAsync(content);
                         //return await GetPostsByHtmlWithSemaphoreAsync(content);
                     }
@@ -183,7 +186,7 @@ public class GelbooruFavoriteDownloader
                         {
                             PropertyNameCaseInsensitive = true
                         });
-                        Console.WriteLine($"✅ Успешно загружена страница: {url}, постов: {result?.Posts?.Count ?? 0}");
+                        Console.WriteLine($"✅ Успешно загружена страница, постов: {result?.Posts?.Count ?? 0}");
                         return result?.Posts ?? new List<GelbooruPost>();
                     }
                 }

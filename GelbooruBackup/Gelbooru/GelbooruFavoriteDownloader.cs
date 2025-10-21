@@ -149,6 +149,7 @@ public class GelbooruFavoriteDownloader
         Console.WriteLine($"Найдено постов на странице: {ids.Count}");
         foreach (var id in ids)
         {
+            Console.WriteLine($"Загрузка поста с ID {id}...");
             var postUrl = $"https://gelbooru.com/index.php?page=dapi&s=post&q=index&id={id}&json=1&api_key={_apiKey}&user_id={_userId}";
             var postsById = await DownloadPageWithRetryAsync(postUrl);
             if (postsById != null)
@@ -161,7 +162,8 @@ public class GelbooruFavoriteDownloader
 
     private async Task<List<GelbooruPost>> DownloadPageWithRetryAsync(string url, int maxRetries = 3)
     {
-        int tries = 0;
+        int tries = 0;  
+        Console.WriteLine($"Загрузка страницы: {url}");
         while (tries < maxRetries)
         {
             try
@@ -181,6 +183,7 @@ public class GelbooruFavoriteDownloader
                         {
                             PropertyNameCaseInsensitive = true
                         });
+                        Console.WriteLine($"✅ Успешно загружена страница: {url}, постов: {result?.Posts?.Count ?? 0}");
                         return result?.Posts ?? new List<GelbooruPost>();
                     }
                 }

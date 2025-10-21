@@ -49,7 +49,7 @@ public class GelbooruFavoriteDownloader
         do
         {
             Console.WriteLine("--------------------------------------------------");
-            Console.WriteLine($"pid: {pid}");
+            Console.WriteLine($"Here P I D: {pid}");
             Console.WriteLine("--------------------------------------------------");
             int page = pid;
             await Task.Delay(1000);

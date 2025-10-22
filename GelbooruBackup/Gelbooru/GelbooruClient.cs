@@ -127,12 +127,12 @@ public class GelbooruClient
         var currentPosts = new List<GelbooruPost>();
         if (forceSync)
         {
-            currentPosts = await down.DownloadAllFavoritesAsync();
+            currentPosts = await down.DownloadAllFavoritesAsync(_cts);
         }
         else
         {
             var postIds = postsCol.Query().Select(o => o.Id).ToList();
-            currentPosts = await down.DownloadNewFavoritesAsync(postIds);
+            currentPosts = await down.DownloadNewFavoritesAsync(postIds, _cts);
         }
 
         Console.WriteLine($"Начинаю синхронизацию {currentPosts.Count} постов...");

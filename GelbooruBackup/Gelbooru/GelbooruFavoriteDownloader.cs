@@ -26,28 +26,28 @@ public class GelbooruFavoriteDownloader
         return posts.Any(p => !existingPostIds.Contains(p.Id));
     }
 
-    public async Task<List<GelbooruPost>> DownloadNewFavoritesAsync(List<long> existingPostIds)
+    public async Task<List<GelbooruPost>> DownloadNewFavoritesAsync(List<long> existingPostIds, CancellationTokenSource cts)
     {
-        await DownloadAllAsync(existingPostIds);
+        await DownloadAllAsync(cts, existingPostIds);
         Console.WriteLine($"✅ Скачивание завершено. Всего постов: {_collectedPosts.Count}");
         return _collectedPosts;
     }
 
-    public async Task<List<GelbooruPost>> DownloadAllFavoritesAsync()
+    public async Task<List<GelbooruPost>> DownloadAllFavoritesAsync(CancellationTokenSource cts)
     {
-        await DownloadAllAsync();
+        await DownloadAllAsync(cts);
         Console.WriteLine($"✅ Скачивание завершено. Всего постов: {_collectedPosts.Count}");
         return _collectedPosts;
     }
 
-    private async Task DownloadAllAsync(List<long> existingPostIds = null)
+    private async Task DownloadAllAsync(CancellationTokenSource cts, List<long> existingPostIds = null)
     {
         int pid = 0;
         int previousPid = 0;
         bool lastPageHasNewPosts = true;
         do
         {
-            Console.WriteLine($"pid: {pid}");
+            Console.WriteLine($"P I D: {pid}");
             int page = pid;
             await Task.Delay(1000);
             await Task.Run(async () =>
@@ -74,7 +74,7 @@ public class GelbooruFavoriteDownloader
                 }
             });
         }
-        while (pid != previousPid && lastPageHasNewPosts);
+        while (pid != previousPid && lastPageHasNewPosts && !cts.IsCancellationRequested);
     }
 
     public static List<long> ExtractPostIdsFromHtml(string htmlContent)
@@ -121,8 +121,10 @@ public class GelbooruFavoriteDownloader
                 {
                     var postUrl = $"https://gelbooru.com/index.php?page=dapi&s=post&q=index&id={id}&json=1&api_key={_apiKey}&user_id={_userId}";
                     var postsById = await DownloadPageWithRetryAsync(postUrl);
-                    if (postsById != null)
+                    if (postsById != null && postsById.Count > 0)
                         posts.Add(postsById.First());
+                    else
+                        Console.WriteLine($"Не удалось загрузить удаленный пост {id}");
                 }
                 catch (Exception ex) 
                 {
@@ -150,7 +152,10 @@ public class GelbooruFavoriteDownloader
         {
             var postUrl = $"https://gelbooru.com/index.php?page=dapi&s=post&q=index&id={id}&json=1&api_key={_apiKey}&user_id={_userId}";
             var postsById = await DownloadPageWithRetryAsync(postUrl);
-            posts.AddRange(postsById);
+            if (postsById != null && postsById.Count > 0)
+                posts.AddRange(postsById);
+            else
+                Console.WriteLine($"Не удалось загрузить удаленный пост {id}");
         }
         return posts;
     }
@@ -168,8 +173,8 @@ public class GelbooruFavoriteDownloader
                     var content = await response.Content.ReadAsStringAsync();
                     if (content.Contains("<!DOCTYPE html"))
                     {
-                        //return await GetPostsByHtmlAsync(json);
-                        return await GetPostsByHtmlWithSemaphoreAsync(content);
+                        return await GetPostsByHtmlAsync(content);
+                        //return await GetPostsByHtmlWithSemaphoreAsync(content);
                     }
                     else
                     {

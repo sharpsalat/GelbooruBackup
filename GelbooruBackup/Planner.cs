@@ -110,7 +110,7 @@ public class Planner : IDisposable
             return;
         if (isUpdated || forceSync)
         {
-            //await SyncToSzurubooru(config);
+            await SyncToSzurubooru(config);
         }
     }
 

@@ -1,9 +1,10 @@
-﻿using LiteDB;
+﻿using GelbooruBackup.Entities.Interfaces;
+using LiteDB;
 namespace GelbooruBackup.Entities;
 
-// Модель с тегами как список (чтобы можно было индексировать)
-public class PostDocument
+public class PostDocument : ILiteDbEntity
 {
+    public static string TableName => "posts";
     [BsonId]
     public long Id { get; set; }
     public List<string> Tags { get; set; }

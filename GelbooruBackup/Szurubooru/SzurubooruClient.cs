@@ -94,9 +94,9 @@ public class SzurubooruClient
         if (_cts.IsCancellationRequested)
             return;
         using var db = new LiteDatabase(Path.Combine(outputFolder, Constants.LiteDBFilename));
-        var tagCol = db.GetCollection<GelbooruTag>("tags");
+        var tagCol = db.GetCollection<GelbooruTag>(GelbooruTag.TableName);
         Console.WriteLine($"🔍 Всего тегов в БД: {tagCol.Count()}");
-        var syncedCol = db.GetCollection<SyncedToSzurubooruTag>("synced_tags");
+        var syncedCol = db.GetCollection<SyncedToSzurubooruTag>(SyncedToSzurubooruTag.TableName);
         Console.WriteLine($"🔍 Всего синхронизированных тегов в БД: {syncedCol.Count()}");
         syncedCol.EnsureIndex(x => x.Name);
 
@@ -229,8 +229,8 @@ public class SzurubooruClient
     public async Task UploadPostsToSzuru(string szurubooruApiUrl, string username, string apiKey, string outputFolder)
     {
         using var db = new LiteDatabase(Path.Combine(outputFolder, Constants.LiteDBFilename));
-        var postsCol = db.GetCollection<PostDocument>("posts");
-        var syncedPostsCol = db.GetCollection<SyncedToSzurubooruPost>("synced_posts");
+        var postsCol = db.GetCollection<PostDocument>(PostDocument.TableName);
+        var syncedPostsCol = db.GetCollection<SyncedToSzurubooruPost>(SyncedToSzurubooruPost.TableName);
 
         var allPosts = postsCol.FindAll().ToList();
         var synced = syncedPostsCol.FindAll().ToList();

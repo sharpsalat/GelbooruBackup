@@ -66,12 +66,19 @@ public class GelbooruClient
             return new List<GelbooruPost>();
         }
     }
-    
+
     private async Task DownloadFileAsync(string url, string outputPath)
     {
         try
         {
-            using var response = await HttpClient.GetAsync(url);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            request.Headers.Referrer = new Uri("https://gelbooru.com/");
+            request.Headers.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36");
+
+            using var response = await HttpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
             await using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
@@ -82,6 +89,23 @@ public class GelbooruClient
             Console.WriteLine($"⚠ Ошибка при скачивании файла {url}: {ex.Message}");
         }
     }
+
+
+    //private async Task DownloadFileAsync(string url, string outputPath)
+    //{
+    //    try
+    //    {
+    //        using var response = await HttpClient.GetAsync(url);
+    //        response.EnsureSuccessStatusCode();
+
+    //        await using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
+    //        await response.Content.CopyToAsync(fs);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Console.WriteLine($"⚠ Ошибка при скачивании файла {url}: {ex.Message}");
+    //    }
+    //}
 
     public async Task<bool> SyncFavoritesToLiteDbAsync(string apiKey, string userId, string favouritesOwnerId, string outputFolder, bool forceSync = false)
     {

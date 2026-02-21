@@ -94,16 +94,18 @@ public class SzurubooruClient
         if (_cts.IsCancellationRequested)
             return;
         using var db = new LiteDatabase(Path.Combine(outputFolder, Constants.LiteDBFilename));
-        var tagCol = db.GetCollection<GelbooruTag>("tags");
-        var syncedCol = db.GetCollection<SyncedToSzurubooruTag>("synced_tags");
+        var tagCol = db.GetCollection<GelbooruTag>(GelbooruTag.TableName);
+        Console.WriteLine($"🔍 Всего тегов в БД: {tagCol.Count()}");
+        var syncedCol = db.GetCollection<SyncedToSzurubooruTag>(SyncedToSzurubooruTag.TableName);
+        Console.WriteLine($"🔍 Всего синхронизированных тегов в БД: {syncedCol.Count()}");
         syncedCol.EnsureIndex(x => x.Name);
 
         // Загружаем имена уже синхронизированных тегов
         var alreadySynced = syncedCol.FindAll().Select(t => t.Name).ToHashSet();
 
         // Отбираем только несинхронизированные теги
-        var tags = tagCol.FindAll().Where(tag => !alreadySynced.Contains(tag.Name)).ToList();
-        Console.WriteLine($"🔍 Всего несинхронизированных тегов: {tags.Count}");
+        var unsyncedTags = tagCol.FindAll().Where(tag => !alreadySynced.Contains(tag.Name)).ToList();
+        Console.WriteLine($"🔍 Всего несинхронизированных тегов: {unsyncedTags.Count}");
 
         var client = new HttpClient();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -116,7 +118,7 @@ public class SzurubooruClient
         SemaphoreSlim semaphore = new SemaphoreSlim(15);
         object dbLock = new object();
 
-        var tasks = tags.Select(async tag =>
+        var tasks = unsyncedTags.Select(async tag =>
         {
             await semaphore.WaitAsync();
 
@@ -227,8 +229,8 @@ public class SzurubooruClient
     public async Task UploadPostsToSzuru(string szurubooruApiUrl, string username, string apiKey, string outputFolder)
     {
         using var db = new LiteDatabase(Path.Combine(outputFolder, Constants.LiteDBFilename));
-        var postsCol = db.GetCollection<PostDocument>("posts");
-        var syncedPostsCol = db.GetCollection<SyncedToSzurubooruPost>("synced_posts");
+        var postsCol = db.GetCollection<PostDocument>(PostDocument.TableName);
+        var syncedPostsCol = db.GetCollection<SyncedToSzurubooruPost>(SyncedToSzurubooruPost.TableName);
 
         var allPosts = postsCol.FindAll().ToList();
         var synced = syncedPostsCol.FindAll().ToList();

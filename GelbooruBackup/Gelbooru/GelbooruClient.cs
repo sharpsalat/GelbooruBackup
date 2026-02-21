@@ -114,10 +114,10 @@ public class GelbooruClient
         Directory.CreateDirectory(outputFolder);
 
         using var db = new LiteDatabase(Path.Combine(outputFolder, Constants.LiteDBFilename));
-        var postsCol = db.GetCollection<PostDocument>("posts");
-        var metaCol = db.GetCollection<SyncMetadata>("metadata");
+        var postsCol = db.GetCollection<PostDocument>(PostDocument.TableName);
+        var metaCol = db.GetCollection<SyncMetadata>(SyncMetadata.TableName);
 
-        var meta = metaCol.FindById("sync_metadata");
+        var meta = metaCol.FindById(SyncMetadata.MetaDataStaticId);
         int? localFavoritesCount = meta?.FavoritesCount;
         
         var hasNewPosts = await HasNewPosts(postsCol, favouritesOwnerId);
@@ -256,7 +256,7 @@ public class GelbooruClient
 
         var newMetaRecord = new SyncMetadata
         {
-            Id = "sync_metadata",
+            Id = SyncMetadata.MetaDataStaticId,
             FavoritesCount = postsCol.Count(),
             LastSyncedAt = DateTime.UtcNow
         };
@@ -357,8 +357,8 @@ public class GelbooruClient
             return;
         using var db = new LiteDatabase(Path.Combine(outputFolder, Constants.LiteDBFilename));
 
-        var postsCol = db.GetCollection<PostDocument>("posts");
-        var tagsCol = db.GetCollection<GelbooruTag>("tags");
+        var postsCol = db.GetCollection<PostDocument>(PostDocument.TableName);
+        var tagsCol = db.GetCollection<GelbooruTag>(GelbooruTag.TableName);
 
         var allTags = postsCol.FindAll()
             .SelectMany(p => p.Tags)

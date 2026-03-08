@@ -1,52 +1,35 @@
-﻿using GelbooruBackup.Entities;
+﻿using FlareSolverrSharp;
+using GelbooruBackup.Entities;
 using LiteDB;
 using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 namespace GelbooruBackup.Gelbooru;
-public class GelbooruClient
+public class GelbooruClient : IDisposable
 {
     private CancellationTokenSource _cts;
     private const int RequestIntervalTimeOut = 1500;
     private const int MaxRequestsPerBatch = 6;
-    public static HttpClient HttpClient { get; private set; }
 
-    public GelbooruClient(CancellationTokenSource cts, string gelbooruUsername, string gelbooruPassword)
+    public static GelbooruHttpClient GelbooruHttpClient { get; private set; }
+
+    public GelbooruClient(CancellationTokenSource cts, string gelbooruUsername, string gelbooruPassword, string flareresolverrURL)
     {
         _cts = cts;
-        HttpClient = GetLoggedInClient(gelbooruUsername, gelbooruPassword);
+        GelbooruHttpClient = new GelbooruHttpClient(gelbooruUsername, gelbooruPassword, flareresolverrURL);
     }
 
     private string GetPostsApiUrl(string apikey, string user_id, int page) => $@"https://gelbooru.com/index.php?page=dapi&s=post&q=index&pid={page}&json=1&tags=fav:{user_id}&api_key={apikey}&user_id={user_id}";
     private string GetTagsApiUrl(string apikey, string user_id, string namesParam) => $@"https://gelbooru.com/index.php?page=dapi&s=tag&q=index&json=1&names={namesParam}&json=1&api_key={apikey}&user_id={user_id}";
-
-    private HttpClient GetLoggedInClient(string username, string password)
-    {
-        var handler = new HttpClientHandler
-        {
-            UseCookies = true,
-            CookieContainer = new System.Net.CookieContainer()
-        };
-
-        var client = new HttpClient(handler);
-
-        var formData = new List<KeyValuePair<string, string>>
-        {
-            new("user", username),
-            new("pass", password)
-        };
-
-        client.PostAsync("https://gelbooru.com/index.php?page=account&s=login&code=00", new FormUrlEncodedContent(formData)).Wait();
-
-        return client;
-    }
 
     public async Task<List<GelbooruPost>> GetFavoritePostsAsync(string apikey, string userName, int page)
     {
         var url = GetPostsApiUrl(apikey, userName, page);
         try
         {
-            var response = await HttpClient.GetAsync(url);
+            var response = await GelbooruHttpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync();
@@ -71,14 +54,7 @@ public class GelbooruClient
     {
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-
-            request.Headers.Referrer = new Uri("https://gelbooru.com/");
-            request.Headers.UserAgent.ParseAdd(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36");
-
-            using var response = await HttpClient.SendAsync(request);
+            using var response = await GelbooruHttpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             await using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
@@ -89,23 +65,6 @@ public class GelbooruClient
             Console.WriteLine($"⚠ Ошибка при скачивании файла {url}: {ex.Message}");
         }
     }
-
-
-    //private async Task DownloadFileAsync(string url, string outputPath)
-    //{
-    //    try
-    //    {
-    //        using var response = await HttpClient.GetAsync(url);
-    //        response.EnsureSuccessStatusCode();
-
-    //        await using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
-    //        await response.Content.CopyToAsync(fs);
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Console.WriteLine($"⚠ Ошибка при скачивании файла {url}: {ex.Message}");
-    //    }
-    //}
 
     public async Task<bool> SyncFavoritesToLiteDbAsync(string apiKey, string userId, string favouritesOwnerId, string outputFolder, bool forceSync = false)
     {
@@ -274,7 +233,7 @@ public class GelbooruClient
     private async Task<bool> HasNewPosts(ILiteCollection<PostDocument> postsCol, string favouritesOwnerId)
     {
         var url = $"https://gelbooru.com/index.php?page=favorites&s=view&id={favouritesOwnerId}";
-        var response = await HttpClient.GetAsync(url);
+        var response = await GelbooruHttpClient.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
         var ids = GelbooruFavoriteDownloader.ExtractPostIdsFromHtml(content);
         foreach (var id in ids)
@@ -328,7 +287,7 @@ public class GelbooruClient
 
             try
             {
-                var response = await HttpClient.GetAsync(url);
+                var response = await GelbooruHttpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
                 var content = await response.Content.ReadAsStringAsync();
@@ -419,5 +378,10 @@ public class GelbooruClient
         }
 
         Console.WriteLine("🎉 Все теги загружены в базу.");
+    }
+
+    public void Dispose()
+    {
+        GelbooruHttpClient?.Dispose();
     }
 }

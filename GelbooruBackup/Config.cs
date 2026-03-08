@@ -12,6 +12,7 @@ namespace GelbooruBackup
         public string SzurubooruURL { get; set; }
         public string SzurubooruUserName { get; set; }
         public string SzurubooruUserPassword { get; set; }
+        public string FlareresolverrURL { get; set; }
         public string FilesFolderPath { get; set; }
         public int ShortSyncTimeout { get; set; }
         public int FullSyncTimeout { get; set; }

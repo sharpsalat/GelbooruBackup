@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace GelbooruBackup.Gelbooru;
 public class GelbooruFavoriteDownloader
 {
-    private readonly HttpClient _client;
+    private readonly GelbooruHttpClient _client;
     private readonly string _apiKey;
     private readonly string _userId;
     private readonly string _favouritesOwnerId;
@@ -15,7 +15,7 @@ public class GelbooruFavoriteDownloader
 
     public GelbooruFavoriteDownloader(string apiKey, string userId, string favouritesOwnerId)
     {
-        _client = GelbooruClient.HttpClient;
+        _client = GelbooruClient.GelbooruHttpClient;
         _apiKey = apiKey;
         _userId = userId;
         _favouritesOwnerId = favouritesOwnerId;

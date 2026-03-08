@@ -43,6 +43,7 @@ namespace GelbooruBackup
             var shortSyncTimeoutString = Environment.GetEnvironmentVariable("SHORT_SYNC_TIMEOUT");
             var fullSyncTimeoutString = Environment.GetEnvironmentVariable("FULL_SYNC_TIMEOUT");
             var backendHost = Environment.GetEnvironmentVariable("BACKEND_HOST");
+            var flaresolverrHost = Environment.GetEnvironmentVariable("FLARERESOLVERR_HOST");
             var gelbooruUserId = GetRequiredEnv("GELBOORU_USER_ID");
             var favouritesOwnerId = Environment.GetEnvironmentVariable("FAVOURITES_OWNER_ID");
             return new Config
@@ -55,7 +56,7 @@ namespace GelbooruBackup
                 SzurubooruURL = backendHost != null ? $"http://{backendHost}:6666" : GetRequiredEnv("SZURUBOORU_URL"),
                 SzurubooruUserName = GetRequiredEnv("SZURUBOORU_USER_NAME"),
                 SzurubooruUserPassword = GetRequiredEnv("SZURUBOORU_USER_PASSWORD"),
-                FlareresolverrURL = backendHost != null ? $"http://{backendHost}:8191" : GetRequiredEnv("FLARERESOLVERR_URL"),
+                FlareresolverrURL = flaresolverrHost != null ? $"http://{flaresolverrHost}:8191" : GetRequiredEnv("FLARERESOLVERR_URL"),
                 FilesFolderPath = Environment.GetEnvironmentVariable("FILES_FOLDER_PATH") ?? Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "data"),
                 
                 ShortSyncTimeout = shortSyncTimeoutString != null ? int.Parse(shortSyncTimeoutString) : 60,

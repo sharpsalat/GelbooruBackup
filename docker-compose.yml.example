@@ -47,14 +47,23 @@ services:
       - LOG_LEVEL=info
       - HEADLESS=true
       - DISABLE_MEDIA=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8191"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
       
   gelbooru-sync:
     image: sharpsalat/gelboorusync:latest
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_started
+      flaresolverr:
+        condition: service_healthy
     environment:
       BACKEND_HOST: server
+      FLARERESOLVERR_HOST: flaresolverr
     env_file:
       - szuruboorusync.env
     volumes:

@@ -1,4 +1,5 @@
 ﻿using GelbooruBackup.Entities;
+using GelbooruBackup.Gelbooru.RequestHandlers;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -6,7 +7,7 @@ using System.Text.RegularExpressions;
 namespace GelbooruBackup.Gelbooru;
 public class GelbooruFavoriteDownloader
 {
-    private readonly GelbooruHttpClient _client;
+    private readonly GelbooruRequestHandler _client;
     private readonly string _apiKey;
     private readonly string _userId;
     private readonly string _favouritesOwnerId;
@@ -15,7 +16,7 @@ public class GelbooruFavoriteDownloader
 
     public GelbooruFavoriteDownloader(string apiKey, string userId, string favouritesOwnerId)
     {
-        _client = GelbooruClient.GelbooruHttpClient;
+        _client = GelbooruClient.GelbooruRequestHandler;
         _apiKey = apiKey;
         _userId = userId;
         _favouritesOwnerId = favouritesOwnerId;
@@ -171,7 +172,7 @@ public class GelbooruFavoriteDownloader
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    if (content.Contains("<!DOCTYPE html"))
+                    if (content.Contains("<!DOCTYPE html") || content.Contains("<html>"))
                     {
                         return await GetPostsByHtmlAsync(content);
                         //return await GetPostsByHtmlWithSemaphoreAsync(content);

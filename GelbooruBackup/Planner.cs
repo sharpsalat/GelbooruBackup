@@ -1,10 +1,5 @@
 ﻿using GelbooruBackup.Gelbooru;
 using GelbooruBackup.Szurubooru;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GelbooruBackup;
 public class Planner : IDisposable
@@ -117,7 +112,11 @@ public class Planner : IDisposable
     public async Task<bool> SyncFromGelbooru(Config config, bool forceSync = false)
     {
         var favouritesOwnerId = string.IsNullOrEmpty(config.FavouritesOwnerId) ? config.GelbooruUserId : config.FavouritesOwnerId;
-        using var gelbooruClient = new GelbooruClient(_cts, config.GelbooruUsername, config.GelbooruPassword, config.FlareresolverrURL);
+        using var gelbooruClient = new GelbooruClient(_cts, new GelbooruClientConfig()
+        {
+            GelbooruUsername = config.GelbooruUsername,
+            GelbooruPassword = config.GelbooruPassword
+        });
         var hasNewPosts = await gelbooruClient.SyncFavoritesToLiteDbAsync(config.GelbooruApiKey, config.GelbooruUserId, favouritesOwnerId, config.FilesFolderPath, forceSync);
         if (_cts.IsCancellationRequested)
             return false;

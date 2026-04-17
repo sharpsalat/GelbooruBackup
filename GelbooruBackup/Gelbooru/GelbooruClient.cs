@@ -1,5 +1,6 @@
 ﻿using FlareSolverrSharp;
 using GelbooruBackup.Entities;
+using GelbooruBackup.Gelbooru.RequestHandlers;
 using LiteDB;
 using System.Collections.Concurrent;
 using System.Net;
@@ -13,12 +14,18 @@ public class GelbooruClient : IDisposable
     private const int RequestIntervalTimeOut = 1500;
     private const int MaxRequestsPerBatch = 6;
 
-    public static GelbooruHttpClient GelbooruHttpClient { get; private set; }
+    public static GelbooruRequestHandler GelbooruRequestHandler { get; private set; }
 
-    public GelbooruClient(CancellationTokenSource cts, string gelbooruUsername, string gelbooruPassword, string flareresolverrURL)
+    public GelbooruClient(CancellationTokenSource cts, GelbooruClientConfig config)
     {
         _cts = cts;
-        GelbooruHttpClient = new GelbooruHttpClient(gelbooruUsername, gelbooruPassword, flareresolverrURL);
+        GelbooruRequestHandler = new(config.GelbooruUsername, config.GelbooruPassword);
+        GelbooruRequestHandler.Use<DefaultHttpClient>();
+
+        using var healthcheckClient = new HttpClient();
+        var useFlaresolverr = FlareSolverrClient.HealthCheckFlaresolverrAsync(healthcheckClient, 1, TimeSpan.FromSeconds(1)).GetAwaiter().GetResult();
+        if (useFlaresolverr)
+            GelbooruRequestHandler.Use<FlareSolverrClient>();
     }
 
     private string GetPostsApiUrl(string apikey, string user_id, int page) => $@"https://gelbooru.com/index.php?page=dapi&s=post&q=index&pid={page}&json=1&tags=fav:{user_id}&api_key={apikey}&user_id={user_id}";
@@ -29,7 +36,7 @@ public class GelbooruClient : IDisposable
         var url = GetPostsApiUrl(apikey, userName, page);
         try
         {
-            var response = await GelbooruHttpClient.GetAsync(url);
+            var response = await GelbooruRequestHandler.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync();
@@ -54,7 +61,7 @@ public class GelbooruClient : IDisposable
     {
         try
         {
-            using var response = await GelbooruHttpClient.GetAsync(url);
+            using var response = await GelbooruRequestHandler.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
             await using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
@@ -233,7 +240,7 @@ public class GelbooruClient : IDisposable
     private async Task<bool> HasNewPosts(ILiteCollection<PostDocument> postsCol, string favouritesOwnerId)
     {
         var url = $"https://gelbooru.com/index.php?page=favorites&s=view&id={favouritesOwnerId}";
-        var response = await GelbooruHttpClient.GetAsync(url);
+        var response = await GelbooruRequestHandler.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
         var ids = GelbooruFavoriteDownloader.ExtractPostIdsFromHtml(content);
         foreach (var id in ids)
@@ -287,7 +294,7 @@ public class GelbooruClient : IDisposable
 
             try
             {
-                var response = await GelbooruHttpClient.GetAsync(url);
+                var response = await GelbooruRequestHandler.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
                 var content = await response.Content.ReadAsStringAsync();
@@ -382,6 +389,6 @@ public class GelbooruClient : IDisposable
 
     public void Dispose()
     {
-        GelbooruHttpClient?.Dispose();
+        GelbooruRequestHandler?.Dispose();
     }
 }

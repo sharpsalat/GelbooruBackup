@@ -15,6 +15,7 @@ namespace GelbooruBackup
         public string FilesFolderPath { get; set; }
         public int ShortSyncTimeout { get; set; }
         public int FullSyncTimeout { get; set; }
+        public bool FullSyncOnStartup { get; set; }
         public override string ToString()
         {
             var properties = GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);

@@ -30,34 +30,33 @@ namespace GelbooruBackup
 
         public static Config LoadConfigFromEnv()
         {
-            string GetRequiredEnv(string name)
-            {
-                var value = Environment.GetEnvironmentVariable(name);
-                if (string.IsNullOrWhiteSpace(value))
-                    throw new InvalidOperationException($"Environment variable '{name}' is required but was not set.");
-                return value;
-            }
-            var shortSyncTimeoutString = Environment.GetEnvironmentVariable("SHORT_SYNC_TIMEOUT");
-            var fullSyncTimeoutString = Environment.GetEnvironmentVariable("FULL_SYNC_TIMEOUT");
-            var backendHost = Environment.GetEnvironmentVariable("BACKEND_HOST");
-            var gelbooruUserId = GetRequiredEnv("GELBOORU_USER_ID");
+            var shortSyncTimeout = EnvHelper.GetOptionalIntEnv("SHORT_SYNC_TIMEOUT");
+            var fullSyncTimeout = EnvHelper.GetOptionalIntEnv("FULL_SYNC_TIMEOUT");
+            var backendHost = EnvHelper.GetOptionalStringEnv("BACKEND_HOST");
+            var gelbooruUserId = EnvHelper.GetRequiredEnv("GELBOORU_USER_ID");
             var favouritesOwnerId = Environment.GetEnvironmentVariable("FAVOURITES_OWNER_ID");
+
+            // FullSyncOnStartup is optional; Planner treats null as default true.
+            var fullSyncOnStartup = EnvHelper.GetOptionalBoolEnv("FULL_SYNC_ON_STARTUP");
+
             return new Config
             {
-                GelbooruApiKey = GetRequiredEnv("GELBOORU_API_KEY"),
+                GelbooruApiKey = EnvHelper.GetRequiredEnv("GELBOORU_API_KEY"),
                 GelbooruUserId = gelbooruUserId,
                 FavouritesOwnerId = string.IsNullOrEmpty(favouritesOwnerId) ? gelbooruUserId : favouritesOwnerId,
-                GelbooruUsername = GetRequiredEnv("GELBOORU_USERNAME"),
-                GelbooruPassword = GetRequiredEnv("GELBOORU_PASSWORD"),
-                SzurubooruURL = backendHost != null ? $"http://{backendHost}:6666" : GetRequiredEnv("SZURUBOORU_URL"),
-                SzurubooruUserName = GetRequiredEnv("SZURUBOORU_USER_NAME"),
-                SzurubooruUserPassword = GetRequiredEnv("SZURUBOORU_USER_PASSWORD"),
+                GelbooruUsername = EnvHelper.GetRequiredEnv("GELBOORU_USERNAME"),
+                GelbooruPassword = EnvHelper.GetRequiredEnv("GELBOORU_PASSWORD"),
+                SzurubooruURL = backendHost != null ? $"http://{backendHost}:6666" : EnvHelper.GetRequiredEnv("SZURUBOORU_URL"),
+                SzurubooruUserName = EnvHelper.GetRequiredEnv("SZURUBOORU_USER_NAME"),
+                SzurubooruUserPassword = EnvHelper.GetRequiredEnv("SZURUBOORU_USER_PASSWORD"),
                 FilesFolderPath = Environment.GetEnvironmentVariable("FILES_FOLDER_PATH") ?? Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "data"),
-                
-                ShortSyncTimeout = shortSyncTimeoutString != null ? int.Parse(shortSyncTimeoutString) : 60,
-                FullSyncTimeout = fullSyncTimeoutString != null ? int.Parse(fullSyncTimeoutString) : 10800,
+
+                ShortSyncTimeout = shortSyncTimeout ?? 60,
+                FullSyncTimeout = fullSyncTimeout ?? 10800,
+                FullSyncOnStartup = fullSyncOnStartup ?? true,
             };
         }
+
         public static async Task<Config> LoadParamsFromJsonAsync(string path)
         {
             if (!File.Exists(path))

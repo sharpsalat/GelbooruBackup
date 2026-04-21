@@ -47,7 +47,9 @@ public class Planner : IDisposable
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
-        var lastForceSync = DateTime.MinValue;
+        // Если FullSyncOnStartup == true — оставляем lastForceSync равным MinValue, чтобы первое выполнение было форсированным.
+        // Если false — помечаем последний форс как только что выполненный, чтобы не делать его на старте.
+        var lastForceSync = _config.FullSyncOnStartup ? DateTime.MinValue : DateTime.UtcNow;
 
         while (!cancellationToken.IsCancellationRequested)
         {

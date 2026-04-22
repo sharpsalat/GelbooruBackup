@@ -82,7 +82,7 @@ public class GelbooruFavoriteDownloader
     {
         var postIds = new List<long>();
 
-        // Ищем все вхождения posts[ЧИСЛО]
+        // Find all occurrences of posts[NUMBER]
         var matches = Regex.Matches(htmlContent, @"posts\[(\d+)\]");
 
         foreach (Match match in matches)

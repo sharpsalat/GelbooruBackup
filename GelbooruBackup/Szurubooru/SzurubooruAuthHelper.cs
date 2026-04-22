@@ -40,7 +40,7 @@ public class SzurubooruAuthHelper
 
         if (response.IsSuccessStatusCode)
         {
-            Console.WriteLine($"🎉 Первый пользователь '{username}' создан и автоматически стал админом.");
+            Console.WriteLine($"🎉 First user '{username}' created and automatically promoted to admin.");
             return true;
         }
         else
@@ -51,16 +51,16 @@ public class SzurubooruAuthHelper
                 if (doc.RootElement.TryGetProperty("name", out var nameProp) &&
                     nameProp.GetString() == "UserAlreadyExistsError")
                 {
-                    Console.WriteLine($"ℹ Пользователь '{username}' уже существует.");
-                    return true; // считаем, что цель достигнута — пользователь есть
+                    Console.WriteLine($"ℹ User '{username}' already exists.");
+                    return true; // consider the goal achieved — user exists
                 }
             }
             catch
             {
-                // Игнорируем ошибки парсинга JSON
+                // Ignore JSON parsing errors
             }
 
-            Console.WriteLine($"⛔ Ошибка при создании первого пользователя: {response.StatusCode}\n{responseJson}");
+            Console.WriteLine($"⛔ Error creating first user: {response.StatusCode}\n{responseJson}");
             return false;
         }
     }
@@ -68,15 +68,15 @@ public class SzurubooruAuthHelper
     {
         using var client = new HttpClient();
 
-        // Формируем Basic Auth заголовок
+        // Form Basic Auth header
         string basicAuth = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicAuth);
 
-        // Обязательно принимаем JSON
+        // Ensure we accept JSON
         client.DefaultRequestHeaders.Accept.Clear();
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        // Путь к API токенам пользователя
+        // Path to user tokens API
         string getTokensUrl = $"{_szuruUrl}/user-tokens/{Uri.EscapeDataString(username)}";
 
         var tokensResponse = await client.GetAsync(getTokensUrl);
@@ -85,7 +85,7 @@ public class SzurubooruAuthHelper
             var tokensJson = await tokensResponse.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(tokensJson);
 
-            // Проверяем массив токенов (ключ "tokens" или "userTokens" — уточни по API)
+            // Check tokens array (key "results" or similar — adjust for the API)
             if (doc.RootElement.TryGetProperty("results", out var resultsArray))
             {
                 foreach (var tokenEntry in resultsArray.EnumerateArray())
@@ -103,11 +103,11 @@ public class SzurubooruAuthHelper
         else if ((int)tokensResponse.StatusCode != 404)
         {
             var error = await tokensResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"Ошибка получения токенов: {tokensResponse.StatusCode}, {error}");
+            Console.WriteLine($"Error fetching tokens: {tokensResponse.StatusCode}, {error}");
             return null;
         }
 
-        // Токенов нет или 404 — создаём новый
+        // No tokens or 404 — create a new one
         string createTokenUrl = $"{_szuruUrl}/user-token/{Uri.EscapeDataString(username)}";
 
         var createPayload = new
@@ -132,7 +132,7 @@ public class SzurubooruAuthHelper
         else
         {
             var error = await createResponse.Content.ReadAsStringAsync();
-            Console.WriteLine($"Ошибка создания токена: {createResponse.StatusCode}, {error}");
+            Console.WriteLine($"Error creating token: {createResponse.StatusCode}, {error}");
         }
 
         return null;

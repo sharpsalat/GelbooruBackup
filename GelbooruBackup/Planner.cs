@@ -36,7 +36,7 @@ public class Planner : IDisposable
         }
         catch (OperationCanceledException)
         {
-            // нормально прервано
+            // canceled normally
         }
         finally
         {
@@ -47,8 +47,9 @@ public class Planner : IDisposable
 
     private async Task RunLoopAsync(CancellationToken cancellationToken)
     {
-        // Если FullSyncOnStartup == true — оставляем lastForceSync равным MinValue, чтобы первое выполнение было форсированным.
-        // Если false — помечаем последний форс как только что выполненный, чтобы не делать его на старте.
+        // If FullSyncOnStartup == true — leave lastForceSync as MinValue so the first run is forced.
+        // If false — mark last force as just executed so it won't run at startup.
+        Console.WriteLine(_config.FullSyncOnStartup ? "Full sync on startup enabled" : "Full sync on startup disabled");
         var lastForceSync = _config.FullSyncOnStartup ? DateTime.MinValue : DateTime.UtcNow;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -57,7 +58,7 @@ public class Planner : IDisposable
             var now = DateTime.UtcNow;
 
             bool needForce = (now - lastForceSync).TotalSeconds >= _config.FullSyncTimeout;
-            Console.WriteLine(needForce ? "Полная синхронизация" : "Частичная синхронизация");
+            Console.WriteLine(needForce ? "Full sync" : "Partial sync");
             try
             {
                 if (needForce)
@@ -72,11 +73,11 @@ public class Planner : IDisposable
             }
             catch (Exception ex)
             {
-                // TODO: логирование ошибки
+                // TODO: log error
                 Console.Error.WriteLine($"Sync failed: {ex}");
             }
 
-            // Рассчитаем время до следующего запуска
+            // Calculate time until next run
             now = DateTime.UtcNow;
             int delaySeconds;
 
@@ -86,15 +87,15 @@ public class Planner : IDisposable
             }
             else
             {
-                // Если только обычный sync был, то ждём до следующего forceSync или регулярного запуска
+                // If only a regular sync ran, wait until next force sync or the regular interval
                 var nextForceIn = lastForceSync.AddSeconds(_config.FullSyncTimeout) - now;
                 var nextRegularIn = TimeSpan.FromSeconds(_config.ShortSyncTimeout);
                 delaySeconds = (int)Math.Min(nextForceIn.TotalSeconds, nextRegularIn.TotalSeconds);
                 if (delaySeconds < 0)
                     delaySeconds = 0;
             }
-            GC.Collect();            // Запускает сборку мусора всех поколений
-            GC.WaitForPendingFinalizers(); // Ждёт завершения финализаторов
+            GC.Collect();            // Trigger full garbage collection
+            GC.WaitForPendingFinalizers(); // Wait for finalizers to complete
             GC.Collect();
             await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
         }
@@ -124,14 +125,14 @@ public class Planner : IDisposable
             return false;
         if (forceSync || hasNewPosts)
         {
-            if (forceSync) Console.WriteLine("Принудительная синхронизация, начинаю синхронизацию тэгов в БД");
-            else Console.WriteLine("Избранное изменилось, начинаю синхронизацию тэгов в БД");
+            if (forceSync) Console.WriteLine("Forced sync — starting tag synchronization into the DB");
+            else Console.WriteLine("Favorites changed — starting tag synchronization into the DB");
             await gelbooruClient.DownloadTagsInfoToLiteDbAsync(config.GelbooruApiKey, config.GelbooruUserId, config.FilesFolderPath);
             return true;
         }
         else
         {
-            Console.WriteLine("Избранное не изменилось, обычная синхронизация, пропускаю синхронизацию тэгов в БД");
+            Console.WriteLine("Favorites unchanged — regular sync, skipping tag sync into DB");
         }
         return false;
     }
@@ -142,8 +143,8 @@ public class Planner : IDisposable
         var isAdminUserCreated = await szuru.CreateFirstUserWithoutAuthAsync(config.SzurubooruUserName, config.SzurubooruUserPassword);
         if (!isAdminUserCreated)
         {
-            Console.WriteLine("❌ Не удалось создать первого пользователя. Проверьте настройки и попробуйте снова.");
-            throw new InvalidOperationException("Не удалось создать первого пользователя.");
+            Console.WriteLine("❌ Failed to create the first user. Check configuration and try again.");
+            throw new InvalidOperationException("Failed to create first user.");
         }
         var szurubooruUserToken = await szuru.GetOrCreateUserTokenAsync(config.SzurubooruUserName, config.SzurubooruUserPassword);
         await szurubooruClient.CreateDefaultTagCategoriesAsync(config.SzurubooruURL, config.SzurubooruUserName, szurubooruUserToken);

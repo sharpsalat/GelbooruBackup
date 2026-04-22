@@ -192,7 +192,7 @@ namespace GelbooruBackup.Gelbooru.RequestHandlers
             _regularHttpClient?.Dispose();
         }
 
-        // Классы для десериализации
+        // Classes for deserialization
         private class SessionResponse { public string session { get; set; } }
         private class FlareSolverrInfo { public string userAgent { get; set; } }
 

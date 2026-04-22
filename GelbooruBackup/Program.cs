@@ -15,17 +15,17 @@ namespace GelbooruBackup
             var config = LoadConfigFromEnv();
 #endif
 
-            Console.WriteLine($"Приложение запущено с параметрами:\n{config.ToString()}");
+            Console.WriteLine($"Application started with parameters:\n{config.ToString()}");
             var planner = new Planner(config);
             planner.Start();
             AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
             {
-                Console.WriteLine($"Приложение завершает работу...");
+                Console.WriteLine($"Application is shutting down...");
                 planner.StopAsync().GetAwaiter().GetResult();
-                Console.WriteLine($"Приложение успешно завершило работу");
+                Console.WriteLine($"Application shutdown completed successfully");
             };
             await Task.Delay(Timeout.Infinite);
-            Console.WriteLine("Приложение неожиданно завершило работу");
+            Console.WriteLine("Application terminated unexpectedly");
         }
 
         public static Config LoadConfigFromEnv()
@@ -60,13 +60,13 @@ namespace GelbooruBackup
         public static async Task<Config> LoadParamsFromJsonAsync(string path)
         {
             if (!File.Exists(path))
-                throw new FileNotFoundException($"Файл конфигурации не найден: {path}");
+                throw new FileNotFoundException($"Configuration file not found: {path}");
 
             string json = await File.ReadAllTextAsync(path);
             Config config = JsonSerializer.Deserialize<Config>(json);
 
             if (config == null)
-                throw new InvalidOperationException("Не удалось десериализовать JSON в объект Params.");
+                throw new InvalidOperationException("Failed to deserialize JSON to Config object.");
 
             return config;
         }

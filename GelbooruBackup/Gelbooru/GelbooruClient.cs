@@ -52,7 +52,7 @@ public class GelbooruClient : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Ошибка на странице {page}: {ex.Message}");
+            Console.WriteLine($"Error on page {page}: {ex.Message}");
             return new List<GelbooruPost>();
         }
     }
@@ -69,7 +69,7 @@ public class GelbooruClient : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"⚠ Ошибка при скачивании файла {url}: {ex.Message}");
+            Console.WriteLine($"⚠ Error downloading file {url}: {ex.Message}");
         }
     }
 
@@ -90,8 +90,8 @@ public class GelbooruClient : IDisposable
 
         if(localFavoritesCount.HasValue)
         {
-            Console.WriteLine($"Количество постов в БД: {localFavoritesCount}");
-            Console.WriteLine($"Есть новые посты на Gelbooru: {hasNewPosts}");
+            Console.WriteLine($"Local posts count in DB: {localFavoritesCount}");
+            Console.WriteLine($"Has new posts on Gelbooru: {hasNewPosts}");
         }
         if (_cts.IsCancellationRequested)
             return false;
@@ -99,17 +99,17 @@ public class GelbooruClient : IDisposable
         {
             if (!hasNewPosts)
             {
-                Console.WriteLine("Избранное не изменилось, синхронизация новых постов не требуется.");
+                Console.WriteLine("Favorites unchanged, no need to sync new posts.");
                 return hasNewPosts;
             }
             else
             {
-                Console.WriteLine("Избранное изменилось, начата синхронизация");
+                Console.WriteLine("Favorites changed, starting synchronization");
             }
         } 
         else
         {
-            Console.WriteLine("Принудительная синхронизация");
+            Console.WriteLine("Forced synchronization");
         }
 
         await Task.Delay(3000);
@@ -125,10 +125,10 @@ public class GelbooruClient : IDisposable
             currentPosts = await down.DownloadNewFavoritesAsync(postIds, _cts);
         }
 
-        Console.WriteLine($"Начинаю синхронизацию {currentPosts.Count} постов...");
+        Console.WriteLine($"Starting synchronization of {currentPosts.Count} posts...");
 
-        SemaphoreSlim downloadSemaphore = new SemaphoreSlim(5); // для загрузки файлов
-        object dbLock = new object(); // для защиты доступа к LiteDB
+        SemaphoreSlim downloadSemaphore = new SemaphoreSlim(5); // for downloading files
+        object dbLock = new object(); // to protect access to LiteDB
 
         var tasks = currentPosts.Select(async post =>
         {
@@ -171,7 +171,7 @@ public class GelbooruClient : IDisposable
                 {
                     await DownloadFileAsync(post.FileUrl, filePath);
                     if (!isNew)
-                        Console.WriteLine($"♻️ Восстановлен файл поста {post.Id}");
+                        Console.WriteLine($"♻️ Restored post file {post.Id}");
                 }
 
                 bool needUpsert = false;
@@ -194,18 +194,18 @@ public class GelbooruClient : IDisposable
                     }
                     if (needUpsert)
                     {
-                        db.Checkpoint(); // чтобы изменения сбросить на диск, опционально
+                        db.Checkpoint(); // to flush changes to disk, optional
                     }
                 }
 
                 if (isNew)
-                    Console.WriteLine($"📥 Новый пост {post.Id}");
+                    Console.WriteLine($"📥 New post {post.Id}");
                 else if (needUpsert)
-                    Console.WriteLine($"♻️ Обновлён пост {post.Id}");
+                    Console.WriteLine($"♻️ Updated post {post.Id}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка при обработке поста {post.Id}: {ex.Message}");
+                Console.WriteLine($"Error processing post {post.Id}: {ex.Message}");
             }
             finally
             {
@@ -233,7 +233,7 @@ public class GelbooruClient : IDisposable
             db.Checkpoint();
         }
 
-        Console.WriteLine("✅ Синхронизация избранных в базу данных завершена.");
+        Console.WriteLine("✅ Favorites synchronization to database completed.");
         return hasNewPosts;
     }
 
@@ -254,7 +254,7 @@ public class GelbooruClient : IDisposable
 
     private bool PostDocumentEquals(PostDocument a, PostDocument b)
     {
-        // Сравниваем важные поля для обновления
+        // Compare important fields for updates
         if (a.Tags == null && b.Tags != null) return false;
         if (a.Tags != null && b.Tags == null) return false;
         if (a.Tags != null && b.Tags != null)
@@ -310,7 +310,7 @@ public class GelbooruClient : IDisposable
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ Ошибка при запросе тегов из Gelbooru API: {ex.Message}");
+                Console.WriteLine($"⚠ Error fetching tags from Gelbooru API: {ex.Message}");
             }
         }
 
@@ -332,7 +332,7 @@ public class GelbooruClient : IDisposable
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        Console.WriteLine($"🔍 Обнаружено {allTags.Count} уникальных тегов.");
+        Console.WriteLine($"🔍 Found {allTags.Count} unique tags.");
 
         const int tagBatchSize = 50;
 
@@ -362,7 +362,7 @@ public class GelbooruClient : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠ Ошибка при загрузке тегов: {string.Join(", ", batch.Take(3))}...: {ex.Message}");
+                        Console.WriteLine($"⚠ Error loading tags: {string.Join(", ", batch.Take(3))}...: {ex.Message}");
                         return new List<GelbooruTag>();
                     }
                 }));
@@ -375,7 +375,7 @@ public class GelbooruClient : IDisposable
                 tagsCol.Upsert(tagList);
             }
 
-            Console.WriteLine($"✅ Обработано {Math.Min(currentIndex * tagBatchSize, allTags.Count)} / {allTags.Count} тегов.");
+            Console.WriteLine($"✅ Processed {Math.Min(currentIndex * tagBatchSize, allTags.Count)} / {allTags.Count} tags.");
 
             var elapsed = (DateTime.UtcNow - batchStart).TotalMilliseconds;
             if (elapsed < RequestIntervalTimeOut && currentIndex < totalBatches)
@@ -384,7 +384,7 @@ public class GelbooruClient : IDisposable
             }
         }
 
-        Console.WriteLine("🎉 Все теги загружены в базу.");
+        Console.WriteLine("🎉 All tags have been loaded into the database.");
     }
 
     public void Dispose()

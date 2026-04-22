@@ -21,17 +21,17 @@
 //        {
 //            _flaresolverrUrl = flareresolverURL;
 
-//            // 1. Создаем сессию в FlareSolverr
+//            // 1. Create a session in FlareSolverr
 //            _sessionId = CreateSessionAsync().GetAwaiter().GetResult();
-//            Console.WriteLine($"Сессия создана: {_sessionId}");
+//            Console.WriteLine($"Session created: {_sessionId}");
 
-//            // 2. Получаем User-Agent
+//            // 2. Get User-Agent
 //            var userAgent = GetUserAgentAsync().GetAwaiter().GetResult();
 
-//            // 3. Логинимся через сессию
+//            // 3. Login via the session
 //            LoginAsync(username, password, userAgent).GetAwaiter().GetResult();
 
-//            // 4. Обычный клиент (для быстрых запросов)
+//            // 4. Regular client (for fast requests)
 //            HttpClient = new HttpClient();
 //            HttpClient.Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds);
 //            HttpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
@@ -56,7 +56,7 @@
 //            var json = await response.Content.ReadAsStringAsync();
 //            var result = JsonSerializer.Deserialize<SessionResponse>(json);
 
-//            return result?.session ?? throw new Exception("Не удалось создать сессию");
+//            return result?.session ?? throw new Exception("Failed to create session");
 //        }
 
 //        private async Task LoginAsync(string username, string password, string userAgent)
@@ -89,24 +89,24 @@
 //            var result = JsonSerializer.Deserialize<FlareResponse>(json);
 
 //            if (result?.status != "ok")
-//                throw new Exception("Ошибка логина через FlareSolverr");
+//                throw new Exception("Login via FlareSolverr failed");
 //        }
 
 //        public async Task<HttpResponseMessage> GetAsync(string url)
 //        {
-//            // Пробуем обычным клиентом
+//            // Try with the regular client first
 //            var response = await HttpClient.GetAsync(url);
 //            if (response.IsSuccessStatusCode)
 //                return response;
 
-//            // Если не сработало - идем через FlareSolverr с сессией
+//            // If it didn't work - use FlareSolverr with the session
 //            using var client = new HttpClient();
 
 //            var request = new
 //            {
 //                cmd = "request.get",
 //                url = url,
-//                session = _sessionId,  // используем ту же сессию!
+//                session = _sessionId,  // use the same session!
 //                maxTimeout = _timeoutMilliseconds
 //            };
 
@@ -123,7 +123,7 @@
 //            if (result?.status != "ok" || result?.solution == null)
 //                return new HttpResponseMessage(HttpStatusCode.Forbidden);
 
-//            // Сохраняем куки из ответа в обычный клиент
+//            // Save cookies from the response into the regular client
 //            if (result.solution.cookies != null)
 //            {
 //                foreach (var cookie in result.solution.cookies)
@@ -132,7 +132,7 @@
 //                }
 //            }
 
-//            // Возвращаем успешный ответ
+//            // Return a successful response
 //            return new HttpResponseMessage(HttpStatusCode.OK)
 //            {
 //                Content = new StringContent(result.solution.response, Encoding.UTF8, "text/html")
@@ -151,7 +151,7 @@
 
 //        public void Dispose()
 //        {
-//            // Удаляем сессию при завершении
+//            // Destroy the session on disposal
 //            try
 //            {
 //                using var client = new HttpClient();
@@ -172,7 +172,7 @@
 //            HttpClient?.Dispose();
 //        }
 
-//        // Классы для десериализации
+//        // Classes for deserialization
 //        private class SessionResponse { public string session { get; set; } }
 //        private class FlareSolverrInfo { public string userAgent { get; set; } }
 

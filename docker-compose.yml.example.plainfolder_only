@@ -1,0 +1,10 @@
+services:
+  gelbooru-sync:
+    image: sharpsalat/gelboorusync:latest
+    restart: unless-stopped
+    environment:
+      BACKEND_HOST: server
+    env_file:
+      - plainfoldersync.env
+    volumes:
+      - ${DATA_PATH}/szurubooru/gelboorudata:/app/data

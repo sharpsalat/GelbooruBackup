@@ -49,11 +49,14 @@ namespace GelbooruBackup
                 SzurubooruURL = backendHost != null ? $"http://{backendHost}:6666" : EnvHelper.GetRequiredEnv("SZURUBOORU_URL"),
                 SzurubooruUserName = EnvHelper.GetRequiredEnv("SZURUBOORU_USER_NAME"),
                 SzurubooruUserPassword = EnvHelper.GetRequiredEnv("SZURUBOORU_USER_PASSWORD"),
-                FilesFolderPath = Environment.GetEnvironmentVariable("FILES_FOLDER_PATH") ?? Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "data"),
+                // Folder path for downloading files.
+                FilesFolderPath = Environment.GetEnvironmentVariable("FILES_FOLDER_PATH") ?? Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "_"),
 
                 ShortSyncTimeout = shortSyncTimeout ?? 60,
                 FullSyncTimeout = fullSyncTimeout ?? 10800,
                 FullSyncOnStartup = fullSyncOnStartup ?? true,
+                // SyncToSzurubooru is optional; Planner treats null as default true.
+                SyncToSzurubooru = EnvHelper.GetOptionalBoolEnv("SYNC_TO_SZURUBOORU") ?? true,
             };
         }
 

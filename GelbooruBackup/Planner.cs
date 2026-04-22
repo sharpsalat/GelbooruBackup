@@ -49,7 +49,6 @@ public class Planner : IDisposable
     {
         // If FullSyncOnStartup == true — leave lastForceSync as MinValue so the first run is forced.
         // If false — mark last force as just executed so it won't run at startup.
-        Console.WriteLine(_config.FullSyncOnStartup ? "Full sync on startup enabled" : "Full sync on startup disabled");
         var lastForceSync = _config.FullSyncOnStartup ? DateTime.MinValue : DateTime.UtcNow;
 
         while (!cancellationToken.IsCancellationRequested)
@@ -104,6 +103,11 @@ public class Planner : IDisposable
     private async Task Sync(Config config, bool forceSync = false)
     {
         var isUpdated = await SyncFromGelbooru(config, forceSync);
+        if (!config.SyncToSzurubooru)
+        {
+                Console.WriteLine("Sync to Szurubooru is disabled in configuration, skipping.");
+                return;
+        }
         if (_cts.IsCancellationRequested)
             return;
         if (isUpdated || forceSync)

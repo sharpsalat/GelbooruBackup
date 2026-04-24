@@ -111,13 +111,13 @@ Create a `szuruboorusync.env` (example in repo). Important values:
    - `cp docker-compose.yml.example docker-compose.yml`
    - `cp szuruboorusync.env.example szuruboorusync.env` and edit values.
 2. Fill in `.env` required values:
-```
-GELBOORU_API_KEY=****************************************************************
-GELBOORU_USER_ID=000000
-GELBOORU_USERNAME=**********
-GELBOORU_PASSWORD=**********
-```
-API key available at [Gelbooru account settings](https://gelbooru.com/index.php?page=account&s=options).
+   ```
+   GELBOORU_API_KEY=****************************************************************
+   GELBOORU_USER_ID=000000
+   GELBOORU_USERNAME=**********
+   GELBOORU_PASSWORD=**********
+   ```
+   - API key available at [Gelbooru account settings](https://gelbooru.com/index.php?page=account&s=options).
 3. Start:
    - `docker compose up -d` (or `docker-compose up -d`).
 4. Check logs:

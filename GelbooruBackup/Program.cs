@@ -35,6 +35,7 @@ namespace GelbooruBackup
             var backendHost = EnvHelper.GetOptionalStringEnv("BACKEND_HOST");
             var gelbooruUserId = EnvHelper.GetRequiredEnv("GELBOORU_USER_ID");
             var favouritesOwnerId = Environment.GetEnvironmentVariable("FAVOURITES_OWNER_ID");
+            var delayBetweenPostsMs = EnvHelper.GetOptionalIntEnv("DELAY_BETWEEN_POSTS_MS");
 
             // FullSyncOnStartup is optional; Planner treats null as default true.
             var fullSyncOnStartup = EnvHelper.GetOptionalBoolEnv("FULL_SYNC_ON_STARTUP");
@@ -57,6 +58,7 @@ namespace GelbooruBackup
                 FullSyncOnStartup = fullSyncOnStartup ?? true,
                 // SyncToSzurubooru is optional; Planner treats null as default true.
                 SyncToSzurubooru = EnvHelper.GetOptionalBoolEnv("SYNC_TO_SZURUBOORU") ?? true,
+                DelayBetweenPostsMs = delayBetweenPostsMs,
             };
         }
 

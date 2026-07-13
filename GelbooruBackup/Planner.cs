@@ -119,12 +119,13 @@ public class Planner : IDisposable
     public async Task<bool> SyncFromGelbooru(Config config, bool forceSync = false)
     {
         var favouritesOwnerId = string.IsNullOrEmpty(config.FavouritesOwnerId) ? config.GelbooruUserId : config.FavouritesOwnerId;
+        int? delayBetweenPostsMs = config.DelayBetweenPostsMs;
         using var gelbooruClient = new GelbooruClient(_cts, new GelbooruClientConfig()
         {
             GelbooruUsername = config.GelbooruUsername,
             GelbooruPassword = config.GelbooruPassword
         });
-        var hasNewPosts = await gelbooruClient.SyncFavoritesToLiteDbAsync(config.GelbooruApiKey, config.GelbooruUserId, favouritesOwnerId, config.FilesFolderPath, forceSync);
+        var hasNewPosts = await gelbooruClient.SyncFavoritesToLiteDbAsync(config.GelbooruApiKey, config.GelbooruUserId, favouritesOwnerId, delayBetweenPostsMs, config.FilesFolderPath, forceSync);
         if (_cts.IsCancellationRequested)
             return false;
         if (forceSync || hasNewPosts)

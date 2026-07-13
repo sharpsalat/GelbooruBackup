@@ -27,6 +27,8 @@ namespace GelbooruBackup.Gelbooru.RequestHandlers
 
         public async Task<HttpResponseMessage> GetAsync(string url)
         {
+            List<HttpResponseMessage> unsuccessResponces = new();
+            List<Exception> unsuccessExceptions = new();
             foreach (var client in _clients)
             {
                 if (!await client.InitAsync(_username, _password))
@@ -37,11 +39,22 @@ namespace GelbooruBackup.Gelbooru.RequestHandlers
                     var response = await client.GetAsync(url);
                     if (response.IsSuccessStatusCode)
                         return response;
+                    else
+                    {
+                        unsuccessResponces.Add(response);
+                    }
                 }
-                catch { }
+                catch (Exception ex) 
+                { 
+                    unsuccessExceptions.Add(ex);
+                }
             }
 
-            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            var exMessage = string.Join(";\n", unsuccessResponces.Select(e => $"{e.RequestMessage} - {e.StatusCode}"));
+            var responcesEx = new HttpRequestException(exMessage);
+            unsuccessExceptions.Add(responcesEx);
+
+            throw new AggregateException(unsuccessExceptions);
         }
 
         public void Dispose()

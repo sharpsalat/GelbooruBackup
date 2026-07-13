@@ -17,7 +17,7 @@ namespace GelbooruBackup.Gelbooru.RequestHandlers
         public static readonly string FlaresolverUrl = "http://flaresolverr:8191";
 #endif
 
-        private readonly double _timeoutMs = 60000;
+        private readonly double _timeoutMs = 600000;
         private HttpClient _regularHttpClient;
         private HttpClient _httpClient;
         private string _sessionId;

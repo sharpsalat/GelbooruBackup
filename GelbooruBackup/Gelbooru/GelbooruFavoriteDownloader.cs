@@ -1,6 +1,8 @@
 ﻿using GelbooruBackup.Entities;
 using GelbooruBackup.Gelbooru.RequestHandlers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -13,13 +15,16 @@ public class GelbooruFavoriteDownloader
     private readonly string _favouritesOwnerId;
     private readonly HashSet<long> _downloadedPostIds = new();
     private readonly List<GelbooruPost> _collectedPosts = new();
+    private readonly int _delayBetweenPostsMs = 150;
 
-    public GelbooruFavoriteDownloader(string apiKey, string userId, string favouritesOwnerId)
+    public GelbooruFavoriteDownloader(string apiKey, string userId, string favouritesOwnerId, int? delayBetweenPostsMs)
     {
         _client = GelbooruClient.GelbooruRequestHandler;
         _apiKey = apiKey;
         _userId = userId;
         _favouritesOwnerId = favouritesOwnerId;
+        if (delayBetweenPostsMs != null)
+            _delayBetweenPostsMs = delayBetweenPostsMs.Value;
     }
 
     private bool HasNewPosts(List<GelbooruPost> posts, List<long> existingPostIds)
@@ -156,12 +161,14 @@ public class GelbooruFavoriteDownloader
             if (postsById != null && postsById.Count > 0)
                 posts.AddRange(postsById);
             else
-                Console.WriteLine($"Не удалось загрузить удаленный пост {id}");
+                Console.WriteLine($"Не удалось загрузить пост {id}");
+
+            await Task.Delay(_delayBetweenPostsMs);
         }
         return posts;
     }
 
-    private async Task<List<GelbooruPost>> DownloadPageWithRetryAsync(string url, int maxRetries = 3)
+    private async Task<List<GelbooruPost>> DownloadPageWithRetryAsync(string url, int maxRetries = 5)
     {
         int tries = 0;
         while (tries < maxRetries)
@@ -183,18 +190,23 @@ public class GelbooruFavoriteDownloader
                         {
                             PropertyNameCaseInsensitive = true
                         });
-                        return result?.Posts ?? new List<GelbooruPost>();
+
+                        var posts = result?.Posts ?? new List<GelbooruPost>();
+
+                        //we got json with html chars escaping
+                        posts.ForEach(p => 
+                        {
+                            p.Tags = WebUtility.HtmlDecode(p.Tags);
+                            p.Source = WebUtility.HtmlDecode(p.Source);
+                        });
+
+                        return posts;
                     }
-                }
-                else if ((int)response.StatusCode == 429)
-                {
-                    Console.WriteLine($"⚠️ Too many requests, ждем... Попытка {tries + 1}");
-                    await Task.Delay(1000 * (tries + 1)); // нарастающая задержка
                 }
                 else
                 {
-                    Console.WriteLine($"⚠️ Ошибка HTTP {response.StatusCode} для {url}");
-                    return null; //TODO: add retry if timed out?
+                    Console.WriteLine($"⚠️ Too many requests, ждем... Попытка {tries + 1}");
+                    await Task.Delay(1000 * (tries + 1)); // нарастающая задержка
                 }
             }
             catch (Exception ex)

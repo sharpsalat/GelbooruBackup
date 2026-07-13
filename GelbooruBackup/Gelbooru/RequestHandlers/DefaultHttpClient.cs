@@ -10,7 +10,7 @@ namespace GelbooruBackup.Gelbooru.RequestHandlers
     {
         private HttpClient _httpClient;
         public string Name => "Default";
-        //private double _timeoutMilliseconds = 60000;
+        private double _timeoutMilliseconds = 600000;
         private bool _isInitialized;
 
         public async Task<bool> InitAsync(string username, string password)
@@ -20,7 +20,7 @@ namespace GelbooruBackup.Gelbooru.RequestHandlers
             try
             {
                 _httpClient = new HttpClient();
-                //_httpClient.Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds);
+                _httpClient.Timeout = TimeSpan.FromMilliseconds(_timeoutMilliseconds);
                 _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
                 _httpClient.DefaultRequestHeaders.Referrer = new Uri("https://gelbooru.com/");

@@ -73,7 +73,7 @@ public class GelbooruClient : IDisposable
         }
     }
 
-    public async Task<bool> SyncFavoritesToLiteDbAsync(string apiKey, string userId, string favouritesOwnerId, string outputFolder, bool forceSync = false)
+    public async Task<bool> SyncFavoritesToLiteDbAsync(string apiKey, string userId, string favouritesOwnerId, int? delayBetweenPostsMs, string outputFolder, bool forceSync = false)
     {
         if (_cts.IsCancellationRequested)
             return false;
@@ -113,7 +113,7 @@ public class GelbooruClient : IDisposable
         }
 
         await Task.Delay(3000);
-        var down = new GelbooruFavoriteDownloader(apiKey, userId, favouritesOwnerId);
+        var down = new GelbooruFavoriteDownloader(apiKey, userId, favouritesOwnerId, delayBetweenPostsMs);
         var currentPosts = new List<GelbooruPost>();
         if (forceSync)
         {
@@ -314,6 +314,9 @@ public class GelbooruClient : IDisposable
             }
         }
 
+        //we got json with html chars escaping
+        result.ForEach(t => t.Name = WebUtility.HtmlDecode(t.Name));
+
         return result;
     }
 
@@ -372,6 +375,9 @@ public class GelbooruClient : IDisposable
 
             foreach (var tagList in results.Where(r => r.Count > 0))
             {
+                //no need?
+                //DeleteRenamedTags(tagsCol, tagList);
+
                 tagsCol.Upsert(tagList);
             }
 
@@ -385,6 +391,17 @@ public class GelbooruClient : IDisposable
         }
 
         Console.WriteLine("🎉 All tags have been loaded into the database.");
+    }
+
+    private static void DeleteRenamedTags(ILiteCollection<GelbooruTag> tagsDbCol, List<GelbooruTag> renamedTagsList)
+    {
+        var tagNamesById = renamedTagsList.Select(t => new KeyValuePair<int, string>(t.Id, t.Name)).ToDictionary();
+        var idsToCheck = tagNamesById.Keys.ToList();
+        var tagsByIdToCheck = tagsDbCol.Find(t => idsToCheck.Contains(t.Id)).ToList();
+        var tagNamesWithChangedName = tagsByIdToCheck.Where(t => tagNamesById[t.Id] != t.Name).Select(t => t.Name).ToList();
+
+        if (tagNamesWithChangedName.Count > 0)
+            tagsDbCol.DeleteMany(t => tagNamesWithChangedName.Contains(t.Name));
     }
 
     public void Dispose()
